@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 2: All 3 new features (Cloudinary signed-upload, RSVP, Mail.ru newsletter send) tested end-to-end. Backend pytest 16/16 PASS. Frontend Playwright covered: admin login, tab order (auctions, lots, artists, rsvps, newsletter, contact), FileUpload 503 error path on auction form, RSVP block on upcoming + hidden on past, admin RSVPs panel with filter/export, Newsletter Compose 503 path. EN/RU language switch works.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "NewsletterAdmin.send", "issue": "Uses window.confirm() — blocks programmatic flows and is not stylistically aligned with the rest of the brutalist UI. Consider a styled confirm modal.", "selector": "[data-testid='compose-send']", "priority": "LOW"},
+      {"component": "AdminDashboard tab labels", "issue": "Tab data-testid is 'admin-tab-contact' but visible label is 'MESSAGES' — minor inconsistency between key/label.", "selector": "[data-testid='admin-tab-contact']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AdminDashboard / RsvpsAdmin", "issues": ["React hydration warning: a <span> rendered as direct child of <option> via Emergent dev wrapper. Console spam only — not functional. Won't appear in production builds."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: replace window.confirm() in NewsletterAdmin.send with a styled modal so the send flow is visually consistent and easier to script.",
+    "Optional: rename 'contact' admin tab key to 'messages' OR change visible label to 'CONTACT' for consistency.",
+    "Note: hydration warning around <option><span> is from Emergent's dev wrapper and harmless; ignore unless seen in prod build."
+  ],
+  "critical_code_review_comments": [
+    "server.py: Cloudinary 503 detail and SMTP 503 detail strings match spec ('Cloudinary not configured' / 'SMTP not configured'). Good.",
+    "server.py /api/cloudinary/signature uses 'regex=' kwarg — works on current FastAPI but is deprecated; future-proof with 'pattern=' for Pydantic v2.",
+    "server.py admin_delete_auction cascades to lots but intentionally NOT to RSVPs (verified). Good — historical RSVP data is preserved.",
+    "newsletter send: uses synchronous smtplib inside an async endpoint — for large subscriber lists this will block the event loop. Consider running _send_email in run_in_executor or a background task.",
+    "newsletter send: failures are returned in response 'failed' list but always returns 200 even on partial failure — acceptable but consider 207 Multi-Status semantics.",
+    "FileUpload.jsx: error path verified (503 on /api/cloudinary/signature surfaces 'Cloudinary not configured. Set ...' in upload-error-auctions). The fallback URL input is still usable. Good UX."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% (all 9 critical UI checkpoints pass)"},
+  "test_credentials": "admin@kik.art / kikadmin2025 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created TEST_ auctions/RSVPs/subscribers via pytest + Playwright. Cleaned up at end. 1 stray TEST auction was deleted via direct API after the run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 2 complete. Pytest at /app/backend/tests/backend_test.py covers Cloudinary sig 503/auth, newsletter send 503/auth, RSVP create+filter+admin list+delete, RSVP-persist-after-auction-delete. For UI tests of newsletter Compose, REMEMBER to register 'dialog' handler — send() uses window.confirm. RSVP block hides on past auctions. CLOUDINARY_*, SMTP_* env vars must remain empty in iteration 2 to assert 503 path; if main agent fills them later, the unconfigured tests will need to be skipped or env reset.",
+  "rca of the issue": "N/A — no failures."
+}

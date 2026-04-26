@@ -14,7 +14,6 @@ export default function AuctionDetail() {
     api.get(`/auctions/${id}`).then((r) => setAuction(r.data));
     api.get(`/auctions/${id}/lots`).then((r) => setLots(r.data));
   }, [id]);
-
   if (!auction) {
     return (
       <div className="App">
@@ -87,8 +86,97 @@ export default function AuctionDetail() {
           </div>
         )}
       </section>
+
+      {auction.status === "upcoming" && <RsvpBlock auctionId={auction.id} />}
+
       <Footer />
     </div>
+  );
+}
+
+function RsvpBlock({ auctionId }) {
+  const { t } = useI18n();
+  const [form, setForm] = useState({ name: "", email: "", favorite_color: "" });
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr("");
+    setBusy(true);
+    try {
+      await api.post(`/auctions/${auctionId}/rsvp`, form);
+      setDone(true);
+      setForm({ name: "", email: "", favorite_color: "" });
+    } catch {
+      setErr(t.rsvp.err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section data-testid="rsvp-block" className="border-b border-black bg-black text-[#f4f4f4]">
+      <div className="grid grid-cols-12">
+        <div className="col-span-12 lg:col-span-5 p-6 md:p-12 lg:p-16 lg:border-r border-white/30">
+          <div className="text-[10px] font-mono uppercase tracking-[0.3em] opacity-70">/ rsvp</div>
+          <h2 className="font-display text-5xl md:text-6xl lowercase leading-[0.9] mt-4">
+            {t.rsvp.title.split(" ").slice(0, -1).join(" ")} <span className="text-[var(--kik-accent)]">{t.rsvp.title.split(" ").slice(-1)[0]}</span>.
+          </h2>
+          <p className="mt-6 max-w-md font-mono text-sm leading-relaxed opacity-90">{t.rsvp.sub}</p>
+        </div>
+        <form onSubmit={submit} data-testid="rsvp-form" className="col-span-12 lg:col-span-7 p-6 md:p-12 lg:p-16 space-y-5">
+          <div>
+            <label className="text-[10px] font-mono uppercase tracking-[0.22em] opacity-80">{t.rsvp.name}</label>
+            <input
+              data-testid="rsvp-name"
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full mt-2 bg-transparent border border-white/40 px-3 py-2.5 font-mono text-sm text-[#f4f4f4] outline-none focus:border-[var(--kik-accent)]"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-mono uppercase tracking-[0.22em] opacity-80">{t.rsvp.email}</label>
+            <input
+              data-testid="rsvp-email"
+              type="email"
+              required
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="w-full mt-2 bg-transparent border border-white/40 px-3 py-2.5 font-mono text-sm text-[#f4f4f4] outline-none focus:border-[var(--kik-accent)]"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-mono uppercase tracking-[0.22em] opacity-80">{t.rsvp.color}</label>
+            <input
+              data-testid="rsvp-color"
+              required
+              value={form.favorite_color}
+              onChange={(e) => setForm({ ...form, favorite_color: e.target.value })}
+              placeholder={t.rsvp.color_placeholder}
+              className="w-full mt-2 bg-transparent border border-white/40 px-3 py-2.5 font-mono text-sm text-[#f4f4f4] outline-none focus:border-[var(--kik-accent)] placeholder:text-white/40 placeholder:uppercase placeholder:tracking-[0.12em] placeholder:text-xs"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <button data-testid="rsvp-submit" disabled={busy || done} className="kik-btn kik-btn-primary">
+              {busy ? "..." : `${t.rsvp.submit} →`}
+            </button>
+            {done && (
+              <span data-testid="rsvp-done" className="text-xs font-mono uppercase tracking-[0.22em] text-[var(--kik-accent)]">
+                {t.rsvp.done}
+              </span>
+            )}
+            {err && (
+              <span data-testid="rsvp-err" role="alert" className="text-xs font-mono uppercase tracking-[0.22em] text-[var(--kik-accent)]">
+                {err}
+              </span>
+            )}
+          </div>
+        </form>
+      </div>
+    </section>
   );
 }
 

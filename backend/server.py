@@ -7,12 +7,19 @@ load_dotenv(ROOT_DIR / '.env')
 import os
 import uuid
 import logging
+import smtplib
+import time
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
 import bcrypt
 import jwt
-from fastapi import FastAPI, APIRouter, HTTPException, Depends
+import cloudinary
+import cloudinary.utils
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -28,6 +35,24 @@ JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGORITHM = "HS256"
 ADMIN_EMAIL = os.environ['ADMIN_EMAIL']
 ADMIN_PASSWORD = os.environ['ADMIN_PASSWORD']
+
+CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
+CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
+CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
+if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True,
+    )
+
+SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.mail.ru')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '465') or 465)
+SMTP_USER = os.environ.get('SMTP_USER', '')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+SMTP_FROM = os.environ.get('SMTP_FROM', '') or SMTP_USER
+SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'kik')
 
 app = FastAPI(title="kik auction house API")
 api_router = APIRouter(prefix="/api")
@@ -447,6 +472,121 @@ async def admin_list_contact(_=Depends(get_current_admin)):
     return [ContactMessage(**d) for d in docs]
 
 
+# ---------------- RSVPs (public + admin) ----------------
+class RSVP(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    auction_id: str
+    name: str
+    email: EmailStr
+    favorite_color: str = ""
+    created_at: datetime = Field(default_factory=now_utc)
+
+
+class RSVPCreate(BaseModel):
+    name: str
+    email: EmailStr
+    favorite_color: str = ""
+
+
+@api_router.post("/auctions/{auction_id}/rsvp", response_model=RSVP)
+async def rsvp(auction_id: str, body: RSVPCreate):
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    obj = RSVP(auction_id=auction_id, **body.model_dump())
+    await db.rsvps.insert_one(_serialize_dt(obj.model_dump()))
+    return obj
+
+
+@api_router.get("/admin/rsvps", response_model=List[RSVP])
+async def admin_list_rsvps(auction_id: Optional[str] = None, _=Depends(get_current_admin)):
+    q = {"auction_id": auction_id} if auction_id else {}
+    docs = await db.rsvps.find(q, {"_id": 0}).sort("created_at", -1).to_list(5000)
+    for d in docs:
+        _deserialize_dt(d, ["created_at"])
+    return [RSVP(**d) for d in docs]
+
+
+@api_router.delete("/admin/rsvps/{rsvp_id}")
+async def admin_delete_rsvp(rsvp_id: str, _=Depends(get_current_admin)):
+    res = await db.rsvps.delete_one({"id": rsvp_id})
+    return {"deleted": res.deleted_count}
+
+
+# ---------------- Cloudinary signed upload ----------------
+class CloudinarySignature(BaseModel):
+    signature: str
+    timestamp: int
+    cloud_name: str
+    api_key: str
+    folder: str
+    resource_type: str
+
+
+@api_router.get("/cloudinary/signature", response_model=CloudinarySignature)
+async def cloudinary_signature(
+    folder: str = Query("auctions", regex=r"^(auctions|lots|artists)$"),
+    resource_type: str = Query("image", regex=r"^(image|video)$"),
+    _=Depends(get_current_admin),
+):
+    if not (CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET):
+        raise HTTPException(
+            status_code=503,
+            detail="Cloudinary not configured. Set CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET in backend/.env",
+        )
+    timestamp = int(time.time())
+    safe_folder = f"kik/{folder}"
+    params = {"timestamp": timestamp, "folder": safe_folder}
+    signature = cloudinary.utils.api_sign_request(params, CLOUDINARY_API_SECRET)
+    return CloudinarySignature(
+        signature=signature,
+        timestamp=timestamp,
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        folder=safe_folder,
+        resource_type=resource_type,
+    )
+
+
+# ---------------- Newsletter send (Mail.ru SMTP) ----------------
+class NewsletterSend(BaseModel):
+    subject: str
+    html_body: str
+    language: Optional[str] = None  # "en" | "ru" | None=all
+
+
+def _send_email(to_addr: str, subject: str, html_body: str) -> None:
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = formataddr((SMTP_FROM_NAME, SMTP_FROM))
+    msg["To"] = to_addr
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as smtp:
+        smtp.login(SMTP_USER, SMTP_PASSWORD)
+        smtp.sendmail(SMTP_FROM, [to_addr], msg.as_string())
+
+
+@api_router.post("/admin/newsletter/send")
+async def admin_newsletter_send(body: NewsletterSend, _=Depends(get_current_admin)):
+    if not (SMTP_USER and SMTP_PASSWORD and SMTP_FROM):
+        raise HTTPException(
+            status_code=503,
+            detail="SMTP not configured. Set SMTP_USER / SMTP_PASSWORD / SMTP_FROM in backend/.env",
+        )
+    q = {"language": body.language} if body.language in ("en", "ru") else {}
+    subs = await db.newsletter.find(q, {"_id": 0, "email": 1}).to_list(10000)
+    sent, failed = 0, []
+    for s in subs:
+        try:
+            _send_email(s["email"], body.subject, body.html_body)
+            sent += 1
+        except Exception as e:
+            failed.append({"email": s["email"], "error": str(e)[:200]})
+    logger.info("Newsletter send: sent=%d failed=%d", sent, len(failed))
+    return {"sent": sent, "failed": failed, "total": len(subs)}
+
+
 # ---------------- Health ----------------
 @api_router.get("/")
 async def root():
@@ -460,6 +600,7 @@ async def on_startup():
     await db.auctions.create_index("date")
     await db.lots.create_index("auction_id")
     await db.newsletter.create_index("email", unique=True)
+    await db.rsvps.create_index("auction_id")
 
     existing = await db.users.find_one({"email": ADMIN_EMAIL.lower()})
     if existing is None:

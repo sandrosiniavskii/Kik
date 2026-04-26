@@ -3,8 +3,9 @@ import { Navigate, useNavigate } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../auth";
 import { useI18n, formatDate } from "../i18n";
+import FileUpload from "../FileUpload";
 
-const TABS = ["auctions", "lots", "artists", "newsletter", "contact"];
+const TABS = ["auctions", "lots", "artists", "rsvps", "newsletter", "contact"];
 
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
@@ -55,6 +56,7 @@ export default function AdminDashboard() {
         {tab === "auctions" && <AuctionsAdmin />}
         {tab === "lots" && <LotsAdmin />}
         {tab === "artists" && <ArtistsAdmin />}
+        {tab === "rsvps" && <RsvpsAdmin />}
         {tab === "newsletter" && <NewsletterAdmin />}
         {tab === "contact" && <ContactAdmin />}
       </main>
@@ -114,7 +116,12 @@ function AuctionsAdmin() {
         <Field label="venue (EN)" value={form.venue_en} onChange={(v) => setForm({ ...form, venue_en: v })} testid="auction-venue-en" />
         <Field label="venue (RU)" value={form.venue_ru} onChange={(v) => setForm({ ...form, venue_ru: v })} testid="auction-venue-ru" />
         <Field label="city" value={form.city} onChange={(v) => setForm({ ...form, city: v })} testid="auction-city" />
-        <Field label="cover image url" value={form.cover_image} onChange={(v) => setForm({ ...form, cover_image: v })} testid="auction-cover" />
+        <FileUpload
+          folder="auctions"
+          label="cover image"
+          value={form.cover_image}
+          onChange={(url) => setForm({ ...form, cover_image: url })}
+        />
         <TextField label="description (EN)" value={form.description_en} onChange={(v) => setForm({ ...form, description_en: v })} testid="auction-desc-en" />
         <TextField label="description (RU)" value={form.description_ru} onChange={(v) => setForm({ ...form, description_ru: v })} testid="auction-desc-ru" />
         <div className="flex gap-2 pt-2">
@@ -236,7 +243,13 @@ function LotsAdmin() {
           <Field label="est. high" type="number" value={form.estimate_high} onChange={(v) => setForm({ ...form, estimate_high: v })} testid="lot-est-high" />
           <Field label="currency" value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} testid="lot-currency" />
         </div>
-        <Field label="image url" value={form.image_url} onChange={(v) => setForm({ ...form, image_url: v })} testid="lot-image" />
+        <Field label="image url" value={form.image_url} onChange={(v) => setForm({ ...form, image_url: v })} testid="lot-image-url-fallback" />
+        <FileUpload
+          folder="lots"
+          label="image"
+          value={form.image_url}
+          onChange={(url) => setForm({ ...form, image_url: url })}
+        />
         <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] pt-2">
           <input data-testid="lot-sold" type="checkbox" checked={form.sold} onChange={(e) => setForm({ ...form, sold: e.target.checked })} />
           sold
@@ -312,7 +325,12 @@ function ArtistsAdmin() {
       <form onSubmit={onSubmit} data-testid="admin-artist-form" className="lg:col-span-1 border border-black p-5 space-y-3 bg-white lg:mr-6 mb-6 lg:mb-0 self-start">
         <div className="kik-label">{editingId ? "edit artist" : "new artist"}</div>
         <Field label="name *" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} testid="artist-name" />
-        <Field label="image url" value={form.image_url} onChange={(v) => setForm({ ...form, image_url: v })} testid="artist-image" />
+        <FileUpload
+          folder="artists"
+          label="portrait"
+          value={form.image_url}
+          onChange={(url) => setForm({ ...form, image_url: url })}
+        />
         <Field label="instagram url" value={form.instagram} onChange={(v) => setForm({ ...form, instagram: v })} testid="artist-instagram" />
         <Field label="website url" value={form.website} onChange={(v) => setForm({ ...form, website: v })} testid="artist-website" />
         <TextField label="bio (EN)" value={form.bio_en} onChange={(v) => setForm({ ...form, bio_en: v })} testid="artist-bio-en" />
@@ -346,35 +364,203 @@ function ArtistsAdmin() {
   );
 }
 
+/* ---------- RSVPs ---------- */
+function RsvpsAdmin() {
+  const { t } = useI18n();
+  const [auctions, setAuctions] = useState([]);
+  const [filter, setFilter] = useState("");
+  const [items, setItems] = useState([]);
+
+  const load = () => {
+    const q = filter ? `?auction_id=${filter}` : "";
+    api.get(`/admin/rsvps${q}`).then((r) => setItems(r.data));
+  };
+  useEffect(() => {
+    api.get("/auctions").then((r) => setAuctions(r.data));
+  }, []);
+  useEffect(() => { load(); }, [filter]);
+
+  const onDelete = async (id) => {
+    if (!window.confirm("Remove RSVP?")) return;
+    await api.delete(`/admin/rsvps/${id}`);
+    load();
+  };
+
+  const exportCsv = () => {
+    const rows = [["name", "email", "favorite_color", "auction", "date"]];
+    items.forEach((r) => {
+      const a = auctions.find((x) => x.id === r.auction_id);
+      rows.push([r.name, r.email, r.favorite_color, a ? `#${a.edition_number} ${a.title_en}` : r.auction_id, r.created_at]);
+    });
+    const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kik-rsvps-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="border border-black bg-white p-4 flex flex-wrap items-end gap-4">
+        <div className="flex-1 min-w-[240px]">
+          <span className="kik-label">filter by auction</span>
+          <select
+            data-testid="rsvp-filter"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="kik-input mt-1.5"
+          >
+            <option value="">all</option>
+            {auctions.map((a) => (
+              <option key={a.id} value={a.id}>#{a.edition_number} {a.title_en}</option>
+            ))}
+          </select>
+        </div>
+        <button data-testid="rsvp-export" onClick={exportCsv} className="kik-btn">
+          {t.admin.rsvps_export} ↓
+        </button>
+        <span className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--kik-ink-soft)]">{items.length}</span>
+      </div>
+
+      <div className="border border-black bg-white overflow-x-auto">
+        <table className="w-full font-mono text-xs">
+          <thead className="bg-black text-[#f4f4f4]">
+            <tr><Th>name</Th><Th>email</Th><Th>color</Th><Th>auction</Th><Th>date</Th><Th>—</Th></tr>
+          </thead>
+          <tbody>
+            {items.length === 0 && <tr><td colSpan={6} className="p-6 text-center uppercase tracking-[0.2em] text-[var(--kik-ink-soft)]">no rsvps</td></tr>}
+            {items.map((r) => {
+              const a = auctions.find((x) => x.id === r.auction_id);
+              return (
+                <tr key={r.id} className="border-t border-black">
+                  <Td className="font-medium">{r.name}</Td>
+                  <Td>{r.email}</Td>
+                  <Td>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-block w-3 h-3 border border-black" style={{ background: r.favorite_color }} />
+                      {r.favorite_color}
+                    </span>
+                  </Td>
+                  <Td>{a ? `#${a.edition_number}` : "—"}</Td>
+                  <Td>{formatDate(r.created_at, "en")}</Td>
+                  <Td>
+                    <button data-testid={`del-rsvp-${r.id}`} onClick={() => onDelete(r.id)} className="underline hover:text-[var(--kik-accent)]">remove</button>
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- NEWSLETTER ---------- */
 function NewsletterAdmin() {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
+  const [compose, setCompose] = useState({ subject: "", html_body: "", language: "" });
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState(null);
+  const [sendErr, setSendErr] = useState("");
+
   const load = () => api.get("/admin/newsletter").then((r) => setItems(r.data));
   useEffect(() => { load(); }, []);
+
   const onDelete = async (id) => {
     await api.delete(`/admin/newsletter/${id}`);
     load();
   };
+
+  const send = async (e) => {
+    e.preventDefault();
+    setSendErr("");
+    setSendResult(null);
+    if (!window.confirm(`Send to ${items.length} subscriber(s)?`)) return;
+    setSending(true);
+    try {
+      const payload = { subject: compose.subject, html_body: compose.html_body };
+      if (compose.language) payload.language = compose.language;
+      const { data } = await api.post("/admin/newsletter/send", payload);
+      setSendResult(data);
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setSendErr(typeof detail === "string" ? detail : "Send failed");
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
-    <div className="border border-black bg-white">
-      <div className="p-4 border-b border-black flex justify-between font-mono text-xs uppercase tracking-[0.22em]">
-        <span>subscribers</span>
-        <span>{items.length}</span>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
+      {/* Compose */}
+      <form onSubmit={send} data-testid="newsletter-compose" className="lg:col-span-1 border border-black p-5 space-y-3 bg-white lg:mr-6 mb-6 lg:mb-0 self-start">
+        <div className="kik-label">{t.admin.compose.title}</div>
+        <Field label={t.admin.compose.subject} required value={compose.subject} onChange={(v) => setCompose({ ...compose, subject: v })} testid="compose-subject" />
+        <label className="block">
+          <span className="kik-label">{t.admin.compose.body}</span>
+          <textarea
+            data-testid="compose-body"
+            required
+            rows={10}
+            value={compose.html_body}
+            onChange={(e) => setCompose({ ...compose, html_body: e.target.value })}
+            className="kik-input mt-1.5 resize-none"
+            placeholder="<h1>kik. pop-up #03</h1><p>thursday 23:00 ...</p>"
+          />
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--kik-ink-soft)] mt-1 block">{t.admin.compose.body_hint}</span>
+        </label>
+        <SelectField
+          label={t.admin.compose.lang}
+          value={compose.language}
+          onChange={(v) => setCompose({ ...compose, language: v })}
+          testid="compose-lang"
+          options={[
+            { v: "", l: t.admin.compose.all },
+            { v: "en", l: "EN" },
+            { v: "ru", l: "RU" },
+          ]}
+        />
+        <button type="submit" disabled={sending || items.length === 0} data-testid="compose-send" className="kik-btn kik-btn-primary w-full">
+          {sending ? t.admin.compose.sending : `${t.admin.compose.send} (${items.length}) →`}
+        </button>
+        {sendResult && (
+          <div data-testid="compose-result" className="border border-black bg-[#EBEBEB] p-3 text-xs font-mono uppercase tracking-[0.2em]">
+            {t.admin.compose.result(sendResult.sent, (sendResult.failed || []).length)}
+          </div>
+        )}
+        {sendErr && (
+          <div data-testid="compose-error" role="alert" className="border border-[var(--kik-accent)] bg-[var(--kik-accent)] text-white p-2 text-[10px] font-mono uppercase tracking-[0.18em]">
+            {sendErr}
+          </div>
+        )}
+      </form>
+
+      {/* Subscribers */}
+      <div className="lg:col-span-2 border border-black bg-white">
+        <div className="p-4 border-b border-black flex justify-between font-mono text-xs uppercase tracking-[0.22em]">
+          <span>subscribers</span>
+          <span>{items.length}</span>
+        </div>
+        <table className="w-full font-mono text-xs">
+          <thead className="bg-black text-[#f4f4f4]"><tr><Th>email</Th><Th>lang</Th><Th>date</Th><Th>—</Th></tr></thead>
+          <tbody>
+            {items.length === 0 && <tr><td colSpan={4} className="p-6 text-center uppercase tracking-[0.2em] text-[var(--kik-ink-soft)]">no subscribers</td></tr>}
+            {items.map((s) => (
+              <tr key={s.id} className="border-t border-black">
+                <Td>{s.email}</Td>
+                <Td>{s.language?.toUpperCase()}</Td>
+                <Td>{formatDate(s.created_at, "en")}</Td>
+                <Td><button data-testid={`del-sub-${s.id}`} onClick={() => onDelete(s.id)} className="underline hover:text-[var(--kik-accent)]">remove</button></Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <table className="w-full font-mono text-xs">
-        <thead className="bg-black text-[#f4f4f4]"><tr><Th>email</Th><Th>lang</Th><Th>date</Th><Th>—</Th></tr></thead>
-        <tbody>
-          {items.length === 0 && <tr><td colSpan={4} className="p-6 text-center uppercase tracking-[0.2em] text-[var(--kik-ink-soft)]">no subscribers</td></tr>}
-          {items.map((s) => (
-            <tr key={s.id} className="border-t border-black">
-              <Td>{s.email}</Td>
-              <Td>{s.language?.toUpperCase()}</Td>
-              <Td>{formatDate(s.created_at, "en")}</Td>
-              <Td><button data-testid={`del-sub-${s.id}`} onClick={() => onDelete(s.id)} className="underline hover:text-[var(--kik-accent)]">remove</button></Td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }
