@@ -26,22 +26,29 @@
 ### ✅ Done (v1)
 - Bilingual (EN/RU) public site: Home, Auctions list (upcoming/past tabs), Auction detail with lots grid, Artists list, Artist detail, About, Contact
 - Brutalist design system: Cabinet Grotesk + IBM Plex Mono, signal-red `#FF2A00` accent, 1px black borders, no rounded, marquee strip, grayscale→color image hovers
-- Admin: login + dashboard with 5 tabs (Auctions, Lots, Artists, Newsletter, Messages), full CRUD for auctions/lots/artists, auction-delete cascades to lots
+- Admin: login + dashboard with 6 tabs (Auctions, Lots, Artists, RSVPs, Newsletter, Messages), full CRUD, auction-delete cascades to lots (RSVPs preserved)
 - Newsletter signup (deduped by email) + Contact form (admin can read)
-- Backend tested: 8/8 pytest cases pass; Frontend tested via Playwright
+- **Cloudinary signed image upload** for auction cover / lot image / artist portrait (with manual URL fallback)
+- **RSVP** for upcoming pop-ups (name + email + favorite color), per-auction filter + CSV export in admin
+- **Newsletter campaign send** via Mail.ru SMTP (subject + HTML body + optional language filter)
+- Backend tested: 16/16 pytest pass; Frontend Playwright 100%
+
+### Required env (placeholders for now)
+- `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET`
+- `SMTP_HOST=smtp.mail.ru` / `SMTP_PORT=465` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM`
 
 ### Backlog (P1)
-- Replace native `datetime-local` with shadcn Calendar/DateTimePicker for design consistency
-- Image upload (currently URLs only) — S3 / Cloudinary
+- Replace native `datetime-local` with shadcn Calendar/DateTimePicker
 - Auction countdown timer on hero
-- RSVP for pop-up (collect attendee email + party size)
+- Async newsletter send (background task — current impl is synchronous smtplib)
 - Pagination on admin tables once content grows
+- Replace `window.confirm` with styled modal
 
 ### Backlog (P2)
 - Stripe deposit / consignment fee collection
-- Email-out from `/admin/newsletter` (Resend or SendGrid)
 - Lot result PDF export for past auctions
 - Public RSS feed of upcoming auctions
+- Cloudinary asset deletion when DB record removed
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`
