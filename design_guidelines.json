@@ -1,0 +1,110 @@
+{
+  "theme": "light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast)",
+  "brand": {
+    "name": "kik",
+    "vibe": "sharp, unconventional, anti-establishment yet luxe, Berlin gallery, raw concrete spaces, urgent, exclusive pop-up"
+  },
+  "typography": {
+    "headings": {
+      "family": "Cabinet Grotesk, sans-serif",
+      "weights": ["800", "900"],
+      "usage": "Massive section headers, auction titles. MUST use tracking-tighter and leading-none. uppercase styling preferred for brutalist feel."
+    },
+    "body_and_data": {
+      "family": "IBM Plex Mono, monospace",
+      "weights": ["400", "500", "600"],
+      "usage": "Lot details, dimensions, artist bios, UI elements, admin panel tables, dates, bilingual toggles."
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tighter leading-none",
+      "h2": "text-3xl sm:text-4xl font-extrabold uppercase tracking-tight",
+      "h3": "text-xl sm:text-2xl font-bold uppercase",
+      "h4": "text-lg sm:text-xl font-medium",
+      "body": "text-base font-mono",
+      "labels": "text-xs font-mono uppercase tracking-[0.2em]"
+    }
+  },
+  "colors": {
+    "background": {
+      "primary": "#EBEBEB",
+      "secondary": "#FFFFFF",
+      "dark_section": "#0A0A0A"
+    },
+    "text": {
+      "primary": "#050505",
+      "secondary": "#555555",
+      "inverse": "#F4F4F4"
+    },
+    "accent": {
+      "primary": "#FF2A00",
+      "hover": "#CC2200"
+    },
+    "border": {
+      "default": "#050505",
+      "subtle": "rgba(5, 5, 5, 0.15)"
+    }
+  },
+  "layout_and_spacing": {
+    "container": "max-w-none px-4 md:px-8 lg:px-12",
+    "grid_system": "Visible structural grids. Use border-b border-r border-black to expose the skeleton. Asymmetric bento layouts for marketing pages.",
+    "border_radius": "rounded-none",
+    "spacing": "Generous spacing scale: py-24, gap-12. Dense spacing in admin panel.",
+    "surfaces": "Cardless design. Flat backgrounds with 1px solid black border. No drop shadows. Use harsh contrasting sections."
+  },
+  "motion_and_interaction": {
+    "hover_states": "Images turn grayscale to full color on hover, or vice-versa. Links and buttons invert colors (bg-black text-white).",
+    "transitions": "Instant or very fast (150ms). Brutalist UI doesn't use slow easing. Snappy and responsive.",
+    "scroll": "Lenis smooth scrolling for premium feel contrasting with brutalist visuals."
+  },
+  "components": {
+    "header": "Sticky header, border-b border-black, backdrop-blur-md bg-[#EBEBEB]/80. Contains kik logo (massive mono), EN/RU toggle, Menu.",
+    "buttons": "Square edges, border border-black, px-6 py-3 font-mono uppercase text-sm. Hover: bg-black text-white. Urgent CTA uses accent color bg-[#FF2A00] text-white border-none hover:bg-black.",
+    "lot_card": "No border-radius. Image top, 1px border-b border-black underneath. Below: monospace grid of details (Artist, Title, Medium, Dim, Est) divided by borders.",
+    "auction_showcase": "Massive typographic date. Red accent for 'RSVP/Upcoming'. Asymmetric layout with hero lot image overlapping a grid line.",
+    "language_toggle": "Minimalist text toggle: 'EN / [RU]' or similar in monospace.",
+    "admin_panel": "Strict Grid Hierarchy, dense data. 1px black borders for tables. Monospace for all data entries. High contrast."
+  },
+  "media": {
+    "image_style": "High contrast, sharp lighting, raw concrete backgrounds, flash photography style for artworks.",
+    "images": [
+      {
+        "category": "hero_background",
+        "url": "https://images.unsplash.com/photo-1774021802030-d4b48399232d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHw0fHxjb250ZW1wb3JhcnklMjBhcnQlMjBnYWxsZXJ5JTIwY29uY3JldGV8ZW58MHx8fHwxNzc3MjE0OTA2fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Empty modern art gallery with polished concrete floor - Use for main landing hero"
+      },
+      {
+        "category": "auction_venue",
+        "url": "https://images.unsplash.com/photo-1761683369185-20ab99d43889?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDZ8MHwxfHNlYXJjaHwxfHxicnV0YWxpc3QlMjBhcmNoaXRlY3R1cmUlMjBpbnRlcmlvcnxlbnwwfHx8fDE3NzcyMTQ5MDZ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Brutalist architecture interior - Use for venue/about section"
+      },
+      {
+        "category": "past_auction_crowd",
+        "url": "https://images.unsplash.com/photo-1655821685343-24e8bc18a472?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwyfHxhcnQlMjBnYWxsZXJ5JTIwY3Jvd2QlMjBvcGVuaW5nJTIwcmVjZXB0aW9ufGVufDB8fHx8MTc3NzIxNDkxNHww&ixlib=rb-4.1.0&q=85",
+        "description": "Group of people in dark gallery - Use for past auctions archive"
+      },
+      {
+        "category": "lot_item_1",
+        "url": "https://images.unsplash.com/photo-1768403899368-a197bd42d13a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwzfHxjb250ZW1wb3JhcnklMjBhcnR3b3JrJTIwYWJzdHJhY3QlMjBwYWludGluZ3xlbnwwfHx8fDE3NzcyMTQ5MTR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract painting - Use as demo lot item"
+      },
+      {
+        "category": "lot_item_2",
+        "url": "https://images.unsplash.com/photo-1776693291060-240de636b18d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHw0fHxjb250ZW1wb3JhcnklMjBhcnR3b3JrJTIwYWJzdHJhY3QlMjBwYWludGluZ3xlbnwwfHx8fDE3NzcyMTQ5MTR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract art - Use as demo lot item"
+      },
+      {
+        "category": "lot_item_3",
+        "url": "https://images.unsplash.com/photo-1774270905951-65a9277c1290?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwzfHxjb250ZW1wb3JhcnklMjBhcnQlMjBnYWxsZXJ5JTIwY29uY3JldGV8ZW58MHx8fHwxNzc3MjE0OTA2fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract sculpture on concrete - Use as demo lot item"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Use pure HTML and Tailwind for marketing pages to achieve the brutalist visible-skeleton layout.",
+    "For the admin dashboard, use Shadcn but override rounded corners to rounded-none and use strict mono typography.",
+    "Implement the bilingual feature using a simple state toggle or i18n structure. Translate key labels to RU as placeholders (e.g., ЛОТЫ, ХУДОЖНИКИ, АРХИВ).",
+    "Use Phosphor Icons (sharp/duotone) or Lucide (with stroke-width 1.5) for icons.",
+    "Add 'data-testid' to all buttons, links, and forms for testing."
+  ]
+}
