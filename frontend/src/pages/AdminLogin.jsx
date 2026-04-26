@@ -67,7 +67,7 @@ export default function AdminLogin() {
             />
           </div>
           {error && (
-            <div data-testid="admin-login-error" className="border border-[var(--kik-accent)] bg-[var(--kik-accent)] text-white px-3 py-2 text-xs font-mono uppercase tracking-[0.2em]">
+            <div data-testid="admin-login-error" role="alert" className="border border-[var(--kik-accent)] bg-[var(--kik-accent)] text-white px-3 py-2 text-xs font-mono uppercase tracking-[0.2em]">
               {error}
             </div>
           )}
